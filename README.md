@@ -4,8 +4,8 @@
 
 <h1 align="center">ET-5M Organ</h1>
 <p align="center">
-  <strong>Retro Home Organ Series #2</strong> by <strong>Yuguen Organ (ゆうげんオルガン)</strong><br>
-  1965 Hybrid Electronic Organ Synthesizer &mdash; VST3 / macOS AudioUnit (AU) / Standalone
+  <strong>Retro Home Organ Collection #2</strong> by <strong>Yuguen Organ (ゆうげんオルガン)</strong><br>
+  1965 Electronic Organ &mdash; VST3 / macOS AudioUnit (AU) / Standalone
 </p>
 <p align="center">
   <em>Current Status: Public Alpha (<code>v0.1.0-alpha</code>) &bull; License: GPLv3</em>
@@ -19,11 +19,11 @@
 
 ## Overview / 概要
 
-**ET-5M Organ** is the second instrument in the **Retro Home Organ Series** developed by **Yuguen Organ (ゆうげんオルガン)**.
+**ET-5M Organ** is the second instrument in the **Retro Home Organ Collection** developed by **Yuguen Organ (ゆうげんオルガン)**.
 Built in real-time C++20 DSP (`JUCE 8`), it models the warm tone-generator harmonics, analog formant filter banks, manual keying/sustain response, modulation LFO, and vintage vacuum-tube cabinet acoustics of a 1965 hybrid electronic home organ.
 
-**ET-5M Organ** は、**Yuguen Organ（ゆうげんオルガン）** が贈る **Retro Home Organ Series 第2弾** です。
-1965年製の真空管＋半導体ハイブリッド電子オルガンの質感あるトーンジェネレーター倍音・フォルマントフィルタバンク・サスティン／ニーレバー応答・モジュレーション LFO・および真空管パワーアンプ＆スピーカーキャビネット特性を、リアルタイム C++20 DSP（JUCE 8）で再現した VST3 / AU / Standalone インストゥルメントです。
+**ET-5M Organ** は、ゆうげんオルガンによる Retro Home Organ Collection 第2弾 です。
+1965年発売の電子オルガンET-5Mの質感を目指し、トーンジェネレーター倍音・フォルマントフィルタバンク・サスティン／ニーレバー応答・モジュレーション LFO・および真空管パワーアンプ＆スピーカーキャビネット特性を、リアルタイム C++20 DSP（JUCE 8）で再現した VST3 / AU / Standalone インストゥルメントです。
 
 > [!NOTE]
 > This is an **Alpha release (`v0.1.0-alpha`)**. Feedback, bug reports, and DAW compatibility reports via GitHub Issues are welcome.
