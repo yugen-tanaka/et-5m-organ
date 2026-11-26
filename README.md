@@ -8,7 +8,7 @@
   1965 Electronic Organ &mdash; VST3 / macOS AudioUnit (AU) / Standalone
 </p>
 <p align="center">
-  <em>Current Status: Public Alpha (<code>v0.1.0-alpha</code>) &bull; License: GPLv3</em>
+  <em>Current Status: Public Alpha (<code>v0.2.0-alpha</code>) &bull; License: GPLv3</em>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@ Built in real-time C++20 DSP (`JUCE 8`), it models the circuit-level tone genera
 1965〜1966年頃の電子オルガン ET-5M の回路構成に基づき、ブロッキング発振器の高調波結合・双一次変換によるアナログフォルマントフィルタ網・アッパー鍵盤専用のダイオードブリッジ式トレモロ・ロワー鍵盤パッシブバス負荷・マニュアルバランスによる高域ロールオフ・内蔵スプリングリバーブ（**Hall Tone**）・13音独立ポリフォニックペダルサスティン・および真空管パワーアンプ＆スピーカーキャビネット特性を、リアルタイム C++20 DSP（JUCE 8）で再現した VST3 / AU / Standalone インストゥルメントです。
 
 > [!NOTE]
-> This is an **Alpha release (`v0.1.0-alpha`)**. Feedback, bug reports, and DAW compatibility reports via GitHub Issues are welcome.
+> This is an **Alpha release (`v0.2.0-alpha`)**. Feedback, bug reports, and DAW compatibility reports via GitHub Issues are welcome.
 
 ---
 
