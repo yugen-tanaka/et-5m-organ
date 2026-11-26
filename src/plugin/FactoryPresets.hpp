@@ -14,19 +14,20 @@ struct FactoryPreset {
     bool pedalSustain;
     float manualBalance;
     float pedalVolume;
+    float hallTone;
     float repeatSpeed;
     float sustainTimeMs;
     float cabinetMix;
     float tubeAmount;
-    bool ampCabBypass;
+    bool ampCabBypass{false};
 };
 
 inline constexpr std::array<FactoryPreset, 5> kFactoryPresets = {{
-    {"01. Full 1965 Console",        {1,1,1,0,1, 1,1,1, 1,1}, false, true,  false, false, 0.50f, 0.85f, 0.98f, 257.0f, 1.0f, 1.0f, false},
-    {"02. Mellow Flute & Diapason",  {1,1,0,0,0, 1,0,0, 1,0}, false, false, false, false, 0.52f, 0.85f, 0.98f, 257.0f, 1.0f, 1.0f, false},
-    {"03. Strings & Oboe Vibrato",   {0,0,1,1,0, 0,1,0, 1,0}, false, true,  false, false, 0.55f, 0.82f, 0.78f, 257.0f, 1.0f, 1.0f, false},
-    {"04. Brassy Trumpet & Horn",    {0,0,0,0,1, 0,0,1, 0,1}, false, false, false, false, 0.50f, 0.88f, 0.98f, 257.0f, 1.0f, 1.1f, false},
-    {"05. Direct Line Out (Bypass)", {1,1,0,0,0, 1,0,0, 1,0}, false, false, false, false, 0.50f, 0.85f, 0.98f, 257.0f, 1.0f, 1.0f, true},
+    FactoryPreset{"01. Full 1965 Console",        {{1,1,1,0,1, 1,1,1, 1,1}}, false, true,  false, false, 0.50f, 0.85f, 0.22f, 0.98f, 257.0f, 1.0f, 1.0f, false},
+    FactoryPreset{"02. Mellow Flute & Diapason",  {{1,1,0,0,0, 1,0,0, 1,0}}, false, false, false, false, 0.52f, 0.85f, 0.00f, 257.0f, 1.0f, 1.0f, false},
+    FactoryPreset{"03. Strings & Oboe Vibrato",   {{0,0,1,1,0, 0,1,0, 1,0}}, false, true,  false, false, 0.55f, 0.82f, 0.35f, 257.0f, 1.0f, 1.0f, false},
+    FactoryPreset{"04. Brassy Trumpet & Horn",    {{0,0,0,0,1, 0,0,1, 0,1}}, false, false, false, false, 0.50f, 0.88f, 0.15f, 257.0f, 1.0f, 1.1f, false},
+    FactoryPreset{"05. Direct Line Out (Bypass)", {{1,1,0,0,0, 1,0,0, 1,0}}, false, false, false, false, 0.50f, 0.85f, 0.00f, 257.0f, 1.0f, 1.0f, true}
 }};
 
 inline void applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts, int presetIndex) {
@@ -55,6 +56,7 @@ inline void applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts, int pr
     setVal(param_ids::pedalSustain,  p.pedalSustain ? 1.0f : 0.0f);
     setVal(param_ids::manualBalance, p.manualBalance);
     setVal(param_ids::pedalVolume,   p.pedalVolume);
+    setVal(param_ids::hallTone,      p.hallTone);
     setVal(param_ids::repeatSpeed,   p.repeatSpeed);
     setVal(param_ids::sustainTimeMs, p.sustainTimeMs);
     setVal(param_ids::cabinetMix,    p.cabinetMix);

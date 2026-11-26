@@ -15,14 +15,22 @@ enum class FilterStageType {
     BP,
     Peak,
     LowShelf,
-    HighShelf
+    HighShelf,
+    Analog
 };
 
 struct FilterStageSpec {
-    FilterStageType type;
-    double fc;
-    double q;
-    double gainDb;
+    FilterStageType type{FilterStageType::HP1};
+    double fc{1000.0};
+    double q{0.70710678};
+    double gainDb{0.0};
+    double b2{0.0};
+    double b1{0.0};
+    double b0{1.0};
+    double a2{0.0};
+    double a1{0.0};
+    double a0{1.0};
+    double fWarp{0.0};
 };
 
 enum StopIndex : std::size_t {
@@ -51,6 +59,37 @@ inline constexpr double kUpperSustainNominalTauMs = 257.07934509963081;
 inline constexpr double kSustainTimeMinMs = 80;
 inline constexpr double kSustainTimeMaxMs = 900;
 
+inline constexpr double kLowerAttackTauMs = 1.5;
+inline constexpr double kLowerFastReleaseTauMs = 3;
+inline constexpr double kLowerBusLoadNum = 5;
+inline constexpr double kLowerBusLoadBase = 4;
+inline constexpr double kPedalAttackTauMs = 6.75;
+inline constexpr double kPedalSustainTauMs = 350;
+inline constexpr int kPedalQuintSemitones = 19;
+inline constexpr double kPedalQuintWeight = 0.20000000000000001;
+inline constexpr double kExpressionCdsTauMs = 28;
+
+inline constexpr double kReverbSendHpFcHz = 159.155;
+inline constexpr double kReverbSendLpFcHz = 3400;
+inline constexpr double kReverbDriverDrive = 0.65000000000000002;
+inline constexpr double kReverbDispDelayMs = 0.45000000000000001;
+inline constexpr double kReverbDispAllpassG = 0.65000000000000002;
+inline constexpr double kReverbSpring1Ms = 29.699999999999999;
+inline constexpr double kReverbSpring2Ms = 37.100000000000001;
+inline constexpr double kReverbSpring1DampHz = 2600;
+inline constexpr double kReverbSpring2DampHz = 2350;
+inline constexpr double kReverbSpringDcHpHz = 140;
+inline constexpr double kReverbFeedbackGain = 0.78000000000000003;
+inline constexpr double kReverbCrossMix = 0.14000000000000001;
+inline constexpr double kReverbOutAp1Ms = 5.2999999999999998;
+inline constexpr double kReverbOutAp1G = 0.55000000000000004;
+inline constexpr double kReverbOutAp2Ms = 7.9000000000000004;
+inline constexpr double kReverbOutAp2G = 0.52000000000000002;
+inline constexpr double kReverbRecoveryHpFcHz = 31.831;
+inline constexpr double kReverbRecoveryLpFcHz = 4200;
+inline constexpr double kReverbMaxWetGain = 0.65000000000000002;
+inline constexpr double kReverbTaperExp = 1.3999999999999999;
+
 inline constexpr double kRepeatSpeedMinHz = 5.0781250000000027;
 inline constexpr double kRepeatSpeedMaxHz = 8.4228515625;
 inline constexpr double kRepeatSpeedNominalHz = 8.3496093750000053;
@@ -58,141 +97,151 @@ inline constexpr double kVibratoHalfDepthCents = 9.5326338541767033;
 inline constexpr double kVibratoDcShiftCents = -1.97284374189717;
 inline constexpr double kTremoloSwingDb = 5.2959141978119568;
 inline constexpr double kTremoloModIndex = 0.29575141623501577;
+inline constexpr double kTremoloLfoLpFcHz = 3.5367765131532298;
+inline constexpr double kTremoloDiodeGMin = 0.52989137381362894;
+inline constexpr double kTremoloDiodeSlope = 4.8883580345594035;
+inline constexpr double kTremoloDiodeBias = 0.27351839570160652;
 
 inline constexpr double kTubeDrive = 0.34999999999999998;
 inline constexpr double kTubeBias = 0.080000000000000002;
+inline constexpr double kTube12ax7Drive = 0.17999999999999999;
+inline constexpr double kTube12ax7Bias = 0.10000000000000001;
+inline constexpr double kTube6bq5Drive = 0.28000000000000003;
+inline constexpr double kTubeOtHpFcHz = 36;
+inline constexpr double kTubeOtLpFcHz = 14500;
 inline constexpr double kHum100HzDb = -62.5;
 inline constexpr double kNoiseFloorDb = -62;
 
 inline constexpr std::size_t kCabinetNumStages = 8;
-inline constexpr double kCabinetGainDb = -0.15896984936243069;
+inline constexpr double kCabinetGainDb = -3.7694285369042642;
 inline constexpr std::array<FilterStageSpec, kCabinetNumStages> kCabinetStages = {{
-    FilterStageSpec{FilterStageType::HP1, 81.124896429075775, 0.70710678000000005, 0},
-    FilterStageSpec{FilterStageType::Peak, 147.99508991909417, 1.4060869501331839, 5.8869526273566795},
-    FilterStageSpec{FilterStageType::Peak, 781.6687247274233, 2.9999999999999996, -3.0132102122365487},
-    FilterStageSpec{FilterStageType::Peak, 1307.2790839919378, 4.7999999999999918, -12.17665880118215},
-    FilterStageSpec{FilterStageType::Peak, 1554.8958280491488, 4.9999999999999991, 17.999999999999982},
-    FilterStageSpec{FilterStageType::Peak, 2071.3461858879077, 1.6986620374728378, -9.0889942009465923},
-    FilterStageSpec{FilterStageType::Peak, 2703.1162487051806, 4.9999892435930287, 12.958193141416668},
-    FilterStageSpec{FilterStageType::LP2, 3685.3174172772078, 0.87119628981821762, 0}
+    FilterStageSpec{FilterStageType::HP1, 68.222305048988034, 0.70710678000000005, 0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 188.84328351393893, 1.461883776068603, 9.4450973355104839, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 979.93998179410323, 0.59968349341543936, 5.9999999995814015, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 1318.732371774963, 4.7999999998586906, -7.8155263095363674, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 1560.8307906880536, 4.99999999996417, 17.99999999968804, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 2401.3294963624958, 1.6589881850483879, -10.67769324836468, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::Peak, 2711.9145389696005, 4.999999999803209, 14.997678235715574, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0},
+    FilterStageSpec{FilterStageType::LP2, 2681.2358428091288, 0.68439368645995113, 0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0}
 }};
 
-inline constexpr std::size_t kStopNumStages = 5;
+inline constexpr std::size_t kStopNumStages = 4;
 struct StopFilterSpec {
     const char* id;
     double gainDb;
+    std::size_t numStages;
     std::array<FilterStageSpec, kStopNumStages> stages;
 };
 
 inline constexpr std::array<StopFilterSpec, NUM_STOPS> kStopSpecs = {{
     {
         "UPPER_DIAPASON",
-        -26.217126256141526,
+        46.451189992583686,
+        1,
         {{
-            FilterStageSpec{FilterStageType::HP1, 45.211142833999986, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 753.57638933974943, 1.541979690747866, 0},
-            FilterStageSpec{FilterStageType::Peak, 944.84991277039433, 2.2527517313880692, -4.3685418019006548},
-            FilterStageSpec{FilterStageType::Peak, 1844.9572073319666, 0.95501274649521972, 13.999999999999998},
-            FilterStageSpec{FilterStageType::Peak, 2193.1410767336815, 2.7999999999999994, -10.051310627215493}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 1368.313151712952, 217.77380179276685},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "UPPER_FLUTE",
-        -22.551118462808649,
+        121.07167129779268,
+        2,
         {{
-            FilterStageSpec{FilterStageType::HP1, 74.143244658654851, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 669.63134253488124, 1.271863422721246, 0},
-            FilterStageSpec{FilterStageType::Peak, 1457.4749914219854, 1.4717722639134123, 7.406938701438901},
-            FilterStageSpec{FilterStageType::Peak, 2890.1133023592465, 0.89254531682694138, -4.7346997112290037},
-            FilterStageSpec{FilterStageType::Peak, 2891.7626332295358, 0.89113449933513311, -4.7327684850908227}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 3662.2022946294819, 582.85759779276373},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 982.6511481560309, 156.39378756395871},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "UPPER_VIOLIN",
-        -23.468333381935,
+        -24.310425428544583,
+        1,
         {{
-            FilterStageSpec{FilterStageType::HP1, 739.66144398897438, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 2253.7895308346388, 1.508706842194433, 0},
-            FilterStageSpec{FilterStageType::Peak, 372.39274077674361, 2.7999970213048635, -6.0556998003449394},
-            FilterStageSpec{FilterStageType::Peak, 2203.8001006157342, 2.7999999999999994, -12.200839730580096},
-            FilterStageSpec{FilterStageType::Peak, 2991.969194712266, 2.7226343798910735, -8.1791767179948636}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 1, -0, 0, 1, 9451.9762862286389, 1504.3287479406633},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "UPPER_OBOE",
-        -21.095819613802846,
+        97.286183432410297,
+        2,
         {{
-            FilterStageSpec{FilterStageType::HP1, 997.33746619477699, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 1479.687071638808, 1.5999999999999999, 0},
-            FilterStageSpec{FilterStageType::Peak, 2740.9302557472442, 0.75429256055477545, -10.247313685238311},
-            FilterStageSpec{FilterStageType::Peak, 4265.3838920499838, 2.7999999999999985, 7.1700011102065639},
-            FilterStageSpec{FilterStageType::Peak, 398.42940852308516, 1.315145788359033, -15.999999674941742}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 1, 1524.335491998472, 0, 1, 4613.9670449654759, 37412020.407885425, 973.47704007057189},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 2527254.8128914768, 20160},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "UPPER_TRUMPET",
-        -19.035615759489872,
+        51.660488713257891,
+        1,
         {{
-            FilterStageSpec{FilterStageType::HP1, 2199.998224170075, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 872.02726872091034, 1.5999999999999999, 0},
-            FilterStageSpec{FilterStageType::Peak, 3472.5190892246374, 2.0277634744799009, -7.022585312426834},
-            FilterStageSpec{FilterStageType::Peak, 2195.0861687386614, 2.5574712645018147, -6.7407547419285905},
-            FilterStageSpec{FilterStageType::Peak, 1538.1459819720392, 0.89744389732140106, 10.603099681297223}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 1, -0, 1, 5398.6623319908622, 33863893.64111229, 926.16545315290898},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "LOWER_DIAPASON",
-        -7.9019606626569328,
+        110.53453223733518,
+        2,
         {{
-            FilterStageSpec{FilterStageType::HP1, 1236.832235770969, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 160.71677852990328, 1.5999999999999999, 0},
-            FilterStageSpec{FilterStageType::Peak, 782.42666297695814, 2.7999999999999994, -11.965559638885029},
-            FilterStageSpec{FilterStageType::Peak, 788.9222378722917, 1.2401555197439682, 13.999999999999998},
-            FilterStageSpec{FilterStageType::Peak, 2719.6081563080756, 0.81087157920244013, -2.3390772122206376}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 3370.3537449159103, 536.40845847164803},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 1204.9896548426789, 191.78005994280917},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "LOWER_CELLO",
-        -31.175778721302262,
+        44.652595523225266,
+        1,
         {{
-            FilterStageSpec{FilterStageType::HP1, 57.479639881830231, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 551.02694056133475, 1.5999999999999999, 0},
-            FilterStageSpec{FilterStageType::Peak, 2376.9372352812306, 0.55000000000000071, 13.999999999994547},
-            FilterStageSpec{FilterStageType::Peak, 1831.6935251602961, 2.7999999999999994, -15.999999999999998},
-            FilterStageSpec{FilterStageType::Peak, 2049.2369837095916, 0.55000000000000016, 13.999999999199801}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 1, 51.802459855974455, 1, 2691.7492887308072, 8917692.6310413964, 475.27654390251251},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "LOWER_HORN",
-        -6.7765774255004239,
+        116.77952002328378,
+        1,
         {{
-            FilterStageSpec{FilterStageType::HP1, 762.70368402733868, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 526.12414673700471, 1.5999999999982717, 0},
-            FilterStageSpec{FilterStageType::Peak, 261.829976548898, 1.7777316422924316, -11.723676033453016},
-            FilterStageSpec{FilterStageType::Peak, 1482.5361345493029, 0.97214636456833492, -13.912576343413599},
-            FilterStageSpec{FilterStageType::Peak, 382.8094402880393, 2.7929865159072236, -10.474101471221006}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 1, 1573.6195613795246, 15664674.686489366, 629.91336321101915},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 0, 1, 0}
         }}
     },
     {
         "PEDAL_BOURDON",
-        -17.496837747803543,
+        161.89054752090766,
+        4,
         {{
-            FilterStageSpec{FilterStageType::HP1, 45.206606154202277, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 146.48302044673767, 0.45000041118901585, 0},
-            FilterStageSpec{FilterStageType::Peak, 114.16107571038668, 1.1777284419017819, 4.4564650270046489},
-            FilterStageSpec{FilterStageType::Peak, 260.00000000000011, 1.9530687862293741, -9.967781814399622},
-            FilterStageSpec{FilterStageType::Peak, 663.24078972222219, 2.7999628297998473, 9.7464560274022602}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 1, -0, 0, 1, 1148.2893204837883, 182.75592145462849},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 641.66197922525339, 102.12367578782813},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 454.09163189717339, 72.270927833100515},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 233.7650194024952, 37.204858359879935}
         }}
     },
     {
         "PEDAL_TROMBONE",
-        -1.3910144561461024,
+        173.85589701056497,
+        4,
         {{
-            FilterStageSpec{FilterStageType::HP1, 420.07167111679126, 0.70710678000000005, 0},
-            FilterStageSpec{FilterStageType::LP2, 115.00941173297093, 1.5326834535324159, 0},
-            FilterStageSpec{FilterStageType::Peak, 199.82108278796559, 0.96923358726821751, -17.566063563195922},
-            FilterStageSpec{FilterStageType::Peak, 260.16489109739803, 0.74321201242794832, -10.876282258158422},
-            FilterStageSpec{FilterStageType::Peak, 1989.6693422388116, 1.2392577874586497, 1.2139148582035566}
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 1, -0, 0, 1, 4204.639615454611, 669.1891787196073},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 1052.5032416882543, 167.51109353492947},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 641.66197922525964, 102.12367578782913},
+            FilterStageSpec{FilterStageType::Analog, 1000.0, 0.70710678, 0.0, 0, 0, 1, 0, 1, 233.76501940249642, 37.204858359880127}
         }}
     }
 }};

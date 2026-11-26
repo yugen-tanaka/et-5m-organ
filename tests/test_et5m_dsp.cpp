@@ -142,13 +142,17 @@ TEST_CASE("3. Manual Ranges & Pedal Low-Note Priority", "[dsp][manuals]") {
     REQUIRE(eng.activeLowerNoteCount() == 0);
     REQUIRE(eng.activePedalMidiNote() == -1);
 
-    // Low-note priority on Pedal
+    // Polyphonic Pedal: multiple keys held simultaneously + lowest returned as UI indicator
     eng.noteOn(ManualId::Pedal, 45);
     REQUIRE(eng.activePedalMidiNote() == 45);
+    REQUIRE(eng.activePedalNoteCount() == 1);
     eng.noteOn(ManualId::Pedal, 38);
     REQUIRE(eng.activePedalMidiNote() == 38);
+    REQUIRE(eng.activePedalNoteCount() == 2);
     eng.noteOff(ManualId::Pedal, 38);
     REQUIRE(eng.activePedalMidiNote() == 45);
+    eng.noteOff(ManualId::Pedal, 45);
+    REQUIRE(eng.activePedalMidiNote() == -1);
 }
 
 TEST_CASE("4. Upper & Knee Sustain Exponential Decay", "[dsp][sustain]") {
@@ -434,45 +438,56 @@ TEST_CASE("10. High-Register Anti-Aliasing (< -90 dB sub-f0 @ 44.1/48kHz)", "[ds
     }
 }
 
-TEST_CASE("11. Strict Monophonic Low-Note-Priority Pedal (Zero Overlap + Fold Refcount)", "[dsp][pedal]") {
+TEST_CASE("11. 13-Circuit Polyphonic Pedal Sustain (350ms RC Decay + Fold Refcount)", "[dsp][pedal]") {
     constexpr double fs = 48000.0;
     ET5MEngine eng;
     eng.prepare(fs);
     EngineState st;
     st.activeStops.fill(false);
     st.activeStops[STOP_PEDAL_BOURDON] = true;
+    st.activeStops[STOP_PEDAL_TROMBONE] = true;
     st.pedalSustain = true;
-    st.polyPedal = true; // Must remain strictly monophonic
     st.cabinetMix = 0.0;
     eng.setState(st);
 
-    // Hold B2 (47), switch to lower D2 (38) -> B2 must immediately cut off with zero two-note overlap
+    // Hold B2 (47) and D2 (38) simultaneously -> both notes must sound polyphonically
     eng.noteOn(ManualId::Pedal, 47);
-    std::vector<double> mixL, mixR, dirL, dirR, cabL, cabR;
-    renderEngine(eng, 7200, mixL, mixR, dirL, dirR, cabL, cabR);
-    eng.noteOff(ManualId::Pedal, 47);
-    renderEngine(eng, 1440, mixL, mixR, dirL, dirR, cabL, cabR);
-
     eng.noteOn(ManualId::Pedal, 38);
-    REQUIRE(eng.activePedalMidiNote() == 38);
-    renderEngine(eng, 24000, mixL, mixR, dirL, dirR, cabL, cabR);
+    REQUIRE(eng.activePedalNoteCount() == 2);
+    std::vector<double> mixL, mixR, dirL, dirR, cabL, cabR;
+    renderEngine(eng, 16800, mixL, mixR, dirL, dirR, cabL, cabR);
 
     const double fD2 = eng.oscillatorBank().noteFrequency(38, true);
     const double fB2 = eng.oscillatorBank().noteFrequency(47, true);
-    auto dft = [&](double freq) {
+    auto dft = [&](const std::vector<double>& sig, double freq) {
         double re = 0.0, im = 0.0;
         const std::size_t start = 4800;
-        const std::size_t m = dirL.size() - start;
+        const std::size_t m = sig.size() - start;
         for (std::size_t i = 0; i < m; ++i) {
             const double w = 0.5 * (1.0 - std::cos(2.0 * kPi * static_cast<double>(i) / static_cast<double>(m)));
             const double a = 2.0 * kPi * freq * static_cast<double>(i) / fs;
-            re += dirL[start + i] * w * std::cos(a);
-            im -= dirL[start + i] * w * std::sin(a);
+            re += sig[start + i] * w * std::cos(a);
+            im -= sig[start + i] * w * std::sin(a);
         }
         return std::sqrt(re * re + im * im);
     };
-    const double overlapDb = 20.0 * std::log10((dft(fB2) + 1e-15) / (dft(fD2) + 1e-15));
-    REQUIRE(overlapDb < -60.0);
+    const double diffDb = std::abs(20.0 * std::log10((dft(dirL, fB2) + 1e-15) / (dft(dirL, fD2) + 1e-15)));
+    REQUIRE(diffDb < 10.0);
+
+    // Release both -> ~350 ms hardware RC sustain decay
+    eng.noteOff(ManualId::Pedal, 47);
+    eng.noteOff(ManualId::Pedal, 38);
+    renderEngine(eng, 28800, mixL, mixR, dirL, dirR, cabL, cabR);
+    auto rmsRange = [&](std::size_t a, std::size_t b) {
+        double s = 0.0;
+        for (std::size_t i = a; i < b; ++i) s += dirL[i] * dirL[i];
+        return std::sqrt(s / static_cast<double>(b - a));
+    };
+    const double r1 = rmsRange(1440, 2880);
+    const double r2 = rmsRange(15840, 17280);
+    const double tauMs = (0.30 * 8.6858896) / std::max(20.0 * std::log10((r1 + 1e-12) / (r2 + 1e-12)), 1e-6) * 1e3;
+    REQUIRE(tauMs > 310.0);
+    REQUIRE(tauMs < 395.0);
 
     // Refcount safety with octave-folded keys mapped to same note (B3=59 and B2=47 -> 47)
     eng.reset();
@@ -486,4 +501,123 @@ TEST_CASE("11. Strict Monophonic Low-Note-Priority Pedal (Zero Overlap + Fold Re
     REQUIRE(eng.activePedalMidiNote() == 47);
     eng.handleMidiNoteOff(3, 47);
     REQUIRE(eng.activePedalMidiNote() == -1);
+}
+
+TEST_CASE("12. 1966 Schematic Physics: Upper-Only Tremolo, Lower Bus Loading, Pedal Quint", "[dsp][schematic]") {
+    constexpr double fs = 48000.0;
+
+    // 1. Tremolo modulates Upper ONLY; Lower and Pedal are bit-identical regardless of tremoloOn
+    for (auto [man, stop, midi] : std::array<std::tuple<ManualId, std::size_t, int>, 2>{
+             {{ManualId::Lower, STOP_LOWER_DIAPASON, 55},
+              {ManualId::Pedal, STOP_PEDAL_BOURDON, 36}}}) {
+        auto renderOne = [&](bool tremOn) {
+            ET5MEngine eng;
+            eng.prepare(fs);
+            EngineState st;
+            st.activeStops.fill(false);
+            st.activeStops[stop] = true;
+            st.tremoloOn = tremOn;
+            st.repeatSpeed = 0.96;
+            st.cabinetMix = 0.0;
+            eng.setState(st);
+            eng.noteOn(man, midi);
+            std::vector<double> mixL, mixR, dirL, dirR, cabL, cabR;
+            renderEngine(eng, 48000, mixL, mixR, dirL, dirR, cabL, cabR);
+            return dirL;
+        };
+        const auto yOff = renderOne(false);
+        const auto yOn = renderOne(true);
+        double maxDiff = 0.0;
+        for (std::size_t i = 0; i < yOff.size(); ++i) {
+            maxDiff = std::max(maxDiff, std::abs(yOn[i] - yOff[i]));
+        }
+        REQUIRE(maxDiff < 1e-12);
+    }
+
+    // 2. Lower bus passive loading 5 / (4 + N): 4 keys compress single-note amplitude by 20*log10(5/8) = -4.08 dB
+    auto dftAt = [&](const std::vector<double>& sig, std::size_t start, double freq) {
+        double re = 0.0, im = 0.0;
+        for (std::size_t i = start; i < sig.size(); ++i) {
+            const double a = 2.0 * kPi * freq * static_cast<double>(i - start) / fs;
+            re += sig[i] * std::cos(a);
+            im -= sig[i] * std::sin(a);
+        }
+        return std::sqrt(re * re + im * im);
+    };
+
+    ET5MEngine e1, e4;
+    e1.prepare(fs); e4.prepare(fs);
+    EngineState stL;
+    stL.activeStops.fill(false);
+    stL.activeStops[STOP_LOWER_DIAPASON] = true;
+    stL.cabinetMix = 0.0;
+    e1.setState(stL); e4.setState(stL);
+    e1.noteOn(ManualId::Lower, 48);
+    for (int m : {48, 52, 55, 59}) e4.noteOn(ManualId::Lower, m);
+    std::vector<double> m1L, m1R, d1L, d1R, c1L, c1R;
+    std::vector<double> m4L, m4R, d4L, d4R, c4L, c4R;
+    renderEngine(e1, 14400, m1L, m1R, d1L, d1R, c1L, c1R);
+    renderEngine(e4, 14400, m4L, m4R, d4L, d4R, c4L, c4R);
+    const double fC3 = e1.oscillatorBank().noteFrequency(48, true);
+    const double dropDb = 20.0 * std::log10(dftAt(d4L, 4800, fC3) / dftAt(d1L, 4800, fC3));
+    REQUIRE(dropDb > -4.6);
+    REQUIRE(dropDb < -3.6);
+
+    // 3. Pedal 100K/500K (+19st quint) presence on C2 -> G3 (3*f0)
+    ET5MEngine ep;
+    ep.prepare(fs);
+    EngineState stP;
+    stP.activeStops.fill(false);
+    stP.activeStops[STOP_PEDAL_TROMBONE] = true;
+    stP.cabinetMix = 0.0;
+    ep.setState(stP);
+    ep.noteOn(ManualId::Pedal, 36);
+    std::vector<double> mpL, mpR, dpL, dpR, cpL, cpR;
+    renderEngine(ep, 24000, mpL, mpR, dpL, dpR, cpL, cpR);
+    const double fC2 = ep.oscillatorBank().noteFrequency(36, true);
+    const double fG3 = ep.oscillatorBank().noteFrequency(36 + 19, true);
+    REQUIRE(dftAt(dpL, 7200, fG3) > 0.02 * dftAt(dpL, 7200, fC2));
+}
+
+TEST_CASE("13. Hall Tone Spring Reverb (6BM8+12AX7): Dry Bypass, Direct Out Isolation, Multirate Tail", "[dsp][reverb]") {
+    for (double fs : {44100.0, 48000.0, 88200.0, 96000.0}) {
+        auto runReverb = [&](double hallTone) {
+            ET5MEngine eng;
+            eng.prepare(fs);
+            EngineState st;
+            st.activeStops.fill(false);
+            st.activeStops[STOP_UPPER_FLUTE] = true;
+            st.hallTone = hallTone;
+            eng.setState(st);
+            eng.noteOn(ManualId::Upper, 67);
+            std::vector<double> mL, mR, dL, dR, cL, cR;
+            renderEngine(eng, static_cast<std::size_t>(0.25 * fs), mL, mR, dL, dR, cL, cR);
+            eng.noteOff(ManualId::Upper, 67);
+            std::vector<double> tmL, tmR, tdL, tdR, tcL, tcR;
+            renderEngine(eng, static_cast<std::size_t>(0.45 * fs), tmL, tmR, tdL, tdR, tcL, tcR);
+            return std::tuple{dL, cL, tcL};
+        };
+
+        const auto [dDry, cDry, tcDry] = runReverb(0.0);
+        const auto [dWet, cWet, tcWet] = runReverb(0.65);
+
+        double maxDirDiff = 0.0;
+        for (std::size_t i = 0; i < dDry.size(); ++i) {
+            maxDirDiff = std::max(maxDirDiff, std::abs(dWet[i] - dDry[i]));
+        }
+        REQUIRE(maxDirDiff < 1e-12);
+
+        const std::size_t lateStart = static_cast<std::size_t>(0.25 * fs);
+        double maxAbsWet = 0.0;
+        for (double v : tcWet) {
+            REQUIRE(std::isfinite(v));
+            maxAbsWet = std::max(maxAbsWet, std::abs(v));
+        }
+        REQUIRE(maxAbsWet > 1e-4);
+
+        const double dryLate = computeRmsDb(tcDry, lateStart);
+        const double wetLate = computeRmsDb(tcWet, lateStart);
+        REQUIRE(wetLate > dryLate + 20.0);
+        REQUIRE(wetLate > -80.0);
+    }
 }

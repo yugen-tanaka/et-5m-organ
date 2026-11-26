@@ -56,6 +56,38 @@ struct BiquadCoeffs {
     return OnePoleCoeffs{b0, b0, (k - 1.0) * inv};
 }
 
+[[nodiscard]] inline double analogBilinearK(double fs, double fWarp) noexcept {
+    if (fWarp > 1.0) {
+        const double fwC = std::min(fWarp, 0.44 * fs);
+        const double ww = 2.0 * kPi * fwC;
+        return ww / std::tan(ww / (2.0 * fs));
+    }
+    return 2.0 * fs;
+}
+
+[[nodiscard]] inline OnePoleCoeffs designAnalogOnePole(const FilterStageSpec& st, double fs) noexcept {
+    const double k = analogBilinearK(fs, st.fWarp);
+    const double inv = 1.0 / (st.a1 * k + st.a0);
+    return OnePoleCoeffs{
+        (st.b1 * k + st.b0) * inv,
+        (st.b0 - st.b1 * k) * inv,
+        (st.a0 - st.a1 * k) * inv
+    };
+}
+
+[[nodiscard]] inline BiquadCoeffs designAnalogBiquad(const FilterStageSpec& st, double fs) noexcept {
+    const double k = analogBilinearK(fs, st.fWarp);
+    const double k2 = k * k;
+    const double inv = 1.0 / (st.a2 * k2 + st.a1 * k + st.a0);
+    return BiquadCoeffs{
+        (st.b2 * k2 + st.b1 * k + st.b0) * inv,
+        (2.0 * st.b0 - 2.0 * st.b2 * k2) * inv,
+        (st.b2 * k2 - st.b1 * k + st.b0) * inv,
+        (2.0 * st.a0 - 2.0 * st.a2 * k2) * inv,
+        (st.a2 * k2 - st.a1 * k + st.a0) * inv
+    };
+}
+
 [[nodiscard]] inline BiquadCoeffs designRbjBiquad(
     FilterStageType ftype,
     double fc,
@@ -213,11 +245,11 @@ template <std::size_t MaxStages>
 class CascadeFilter {
 public:
     template <std::size_t N>
-    void configure(const std::array<FilterStageSpec, N>& specs, double gainDb, double fs) noexcept {
+    void configure(const std::array<FilterStageSpec, N>& specs, double gainDb, double fs, std::size_t activeCount = N) noexcept {
         static_assert(N <= MaxStages, "Exceeded MaxStages");
-        numStages_ = N;
+        numStages_ = std::min(activeCount, N);
         linearGain_ = std::pow(10.0, gainDb / 20.0);
-        for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t i = 0; i < numStages_; ++i) {
             const auto& st = specs[i];
             if (st.type == FilterStageType::HP1) {
                 isOnePole_[i] = true;
@@ -225,6 +257,14 @@ public:
             } else if (st.type == FilterStageType::LP1) {
                 isOnePole_[i] = true;
                 onePoles_[i].setCoeffs(designOnePoleLP(st.fc, fs));
+            } else if (st.type == FilterStageType::Analog) {
+                if (std::abs(st.a2) <= 1e-30 && std::abs(st.b2) <= 1e-30) {
+                    isOnePole_[i] = true;
+                    onePoles_[i].setCoeffs(designAnalogOnePole(st, fs));
+                } else {
+                    isOnePole_[i] = false;
+                    biquads_[i].setCoeffs(designAnalogBiquad(st, fs));
+                }
             } else {
                 isOnePole_[i] = false;
                 biquads_[i].setCoeffs(designRbjBiquad(st.type, st.fc, st.q, st.gainDb, fs));
