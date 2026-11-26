@@ -244,6 +244,7 @@ TEST_CASE("ET5M Plugin: 5 Factory Presets and XML state roundtrip", "[plugin][pr
     setChoiceIndex(proc.apvts(), et5m::plugin::param_ids::midiMode, 1);
     setChoiceIndex(proc.apvts(), et5m::plugin::param_ids::upperMidiCh, 9);
     setParamNormalized(proc.apvts(), et5m::plugin::param_ids::pedalSplitMax, 45.0f);
+    setParamNormalized(proc.apvts(), et5m::plugin::param_ids::hallTone, 0.42f);
     setParamNormalized(proc.apvts(), et5m::plugin::param_ids::ampCabBypass, 1.0f);
 
     juce::MemoryBlock stateBlock;
@@ -261,6 +262,7 @@ TEST_CASE("ET5M Plugin: 5 Factory Presets and XML state roundtrip", "[plugin][pr
     REQUIRE(std::lround(getVal(et5m::plugin::param_ids::midiMode)) == 1);
     REQUIRE(std::lround(getVal(et5m::plugin::param_ids::upperMidiCh)) == 9);
     REQUIRE(std::lround(getVal(et5m::plugin::param_ids::pedalSplitMax)) == 45);
+    REQUIRE_THAT(getVal(et5m::plugin::param_ids::hallTone), Catch::Matchers::WithinAbs(0.42f, 0.005f));
     REQUIRE(getVal(et5m::plugin::param_ids::ampCabBypass) > 0.5f);
     REQUIRE(getVal(et5m::plugin::param_ids::upperTrumpet) > 0.5f);
 }

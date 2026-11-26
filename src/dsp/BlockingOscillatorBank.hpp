@@ -49,10 +49,10 @@ inline constexpr std::array<int, 7> kMasterTopMidi = {96, 90, 91, 92, 93, 94, 95
 }
 
 [[nodiscard]] inline double stageCoutHpHz(int midiNote) noexcept {
-    if (midiNote >= 67) return 387.4;
-    if (midiNote >= 55) return 193.7;
-    if (midiNote >= 43) return 77.5;
-    return 38.7;
+    if (midiNote >= 67) return 388.2;
+    if (midiNote >= 55) return 194.1;
+    if (midiNote >= 43) return 77.6;
+    return 38.8;
 }
 
 [[nodiscard]] inline double renderBlockingOscSample(

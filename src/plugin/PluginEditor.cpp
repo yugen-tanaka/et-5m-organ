@@ -325,7 +325,8 @@ ET5MAudioProcessorEditor::ET5MAudioProcessorEditor(ET5MAudioProcessor& p)
     addTablet(param_ids::upperSustain,  "UPPER\nSUST", TabletInk::DarkCharcoal, 3);
     addTablet(param_ids::kneeSustain,   "KNEE\nLEVER", TabletInk::DarkCharcoal, 3);
 
-    // Left Cheekblock Console Knobs (5) + Right Cheekblock Sustain Time (1)
+    // Left Cheekblock Console Knobs (6) + Right Cheekblock Sustain Time (1)
+    addKnob(param_ids::hallTone,      "HALL TONE",  false);
     addKnob(param_ids::pedalVolume,   "PEDAL VOL",  false);
     addKnob(param_ids::manualBalance, "MANUAL BAL", false);
     addKnob(param_ids::repeatSpeed,   "REPEAT SPD", false);
@@ -377,7 +378,7 @@ void ET5MAudioProcessorEditor::addKnob(const char* paramId, const juce::String& 
     KnobSlot slot;
     slot.isBay = isBay;
     slot.slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
-    slot.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, isBay ? 68 : 72, 14);
+    slot.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, isBay ? 68 : 64, 14);
     slot.slider->setColour(juce::Slider::textBoxTextColourId, pal::creamText);
     slot.slider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     if (suffix.isNotEmpty()) {
@@ -628,7 +629,7 @@ void ET5MAudioProcessorEditor::resized() {
     // 3. Cheekblock & Sustain Control Rail (no center emblem)
     cheekRailBounds_ = area.removeFromTop(cheekRailH);
     auto cr = cheekRailBounds_.reduced(10, 6);
-    leftCheekBounds_ = cr.removeFromLeft(static_cast<int>(cr.getWidth() * 0.54f));
+    leftCheekBounds_ = cr.removeFromLeft(static_cast<int>(cr.getWidth() * 0.57f));
     cr.removeFromLeft(10);
     rightCheekBounds_ = cr;
 

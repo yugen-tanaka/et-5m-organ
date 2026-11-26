@@ -37,7 +37,8 @@ inline constexpr const char* pedalSustain = "pedal_sustain";
 inline constexpr const char* upperSustain = "upper_sustain";
 inline constexpr const char* kneeSustain  = "knee_sustain";
 
-// Console Knobs (6)
+// Console Knobs (7)
+inline constexpr const char* hallTone      = "hall_tone";
 inline constexpr const char* pedalVolume   = "pedal_volume";
 inline constexpr const char* manualBalance = "manual_balance";
 inline constexpr const char* repeatSpeed   = "repeat_speed";
@@ -116,8 +117,9 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     addBool(param_ids::upperSustain, "Upper Sustain", false);
     addBool(param_ids::kneeSustain,  "Knee Lever Sustainer", false);
 
-    // 6 Console Knobs
-    addFloat(param_ids::pedalVolume,   "Pedal Volume",   0.0f, 1.0f, 0.001f, 0.85f);
+    // 7 Console Knobs
+    addFloat(param_ids::hallTone,      "Hall Tone (Reverb)", 0.0f, 1.0f, 0.001f, 0.00f);
+    addFloat(param_ids::pedalVolume,   "Pedal Volume",       0.0f, 1.0f, 0.001f, 0.85f);
     addFloat(param_ids::manualBalance, "Manual Balance", 0.0f, 1.0f, 0.001f, 0.50f);
     addFloat(param_ids::repeatSpeed,   "Repeat Speed",   0.0f, 1.0f, 0.001f, 0.98f);
     addFloat(param_ids::sustainTimeMs, "Sustain Time (ms)", 80.0f, 900.0f, 0.5f, static_cast<float>(kUpperSustainNominalTauMs));
@@ -172,6 +174,7 @@ struct CachedParameterPointers {
     std::atomic<float>* upperSustain{nullptr};
     std::atomic<float>* kneeSustain{nullptr};
 
+    std::atomic<float>* hallTone{nullptr};
     std::atomic<float>* pedalVolume{nullptr};
     std::atomic<float>* manualBalance{nullptr};
     std::atomic<float>* repeatSpeed{nullptr};
@@ -223,6 +226,7 @@ struct CachedParameterPointers {
         upperSustain      = apvts.getRawParameterValue(param_ids::upperSustain);
         kneeSustain       = apvts.getRawParameterValue(param_ids::kneeSustain);
 
+        hallTone          = apvts.getRawParameterValue(param_ids::hallTone);
         pedalVolume       = apvts.getRawParameterValue(param_ids::pedalVolume);
         manualBalance     = apvts.getRawParameterValue(param_ids::manualBalance);
         repeatSpeed       = apvts.getRawParameterValue(param_ids::repeatSpeed);
@@ -263,6 +267,7 @@ struct CachedParameterPointers {
         st.pedalSustain      = (pedalSustain->load(std::memory_order_relaxed) >= 0.5f);
         st.upperSustain      = (upperSustain->load(std::memory_order_relaxed) >= 0.5f);
         st.kneeSustain       = (kneeSustain->load(std::memory_order_relaxed) >= 0.5f);
+        st.hallTone          = (hallTone != nullptr) ? static_cast<double>(hallTone->load(std::memory_order_relaxed)) : 0.0;
         st.pedalVolume       = static_cast<double>(pedalVolume->load(std::memory_order_relaxed));
         st.manualBalance     = static_cast<double>(manualBalance->load(std::memory_order_relaxed));
         st.repeatSpeed       = static_cast<double>(repeatSpeed->load(std::memory_order_relaxed));
@@ -276,7 +281,7 @@ struct CachedParameterPointers {
         st.stereoWidth       = 0.35;
         st.authentic13Tuning = true;
         st.syncBleed         = 1.0;
-        st.polyPedal         = false;
+        st.polyPedal         = true;
         return st;
     }
 
